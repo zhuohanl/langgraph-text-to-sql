@@ -1,20 +1,21 @@
 
-from typing import Annotated, TypedDict
+from typing import Annotated, TypedDict, Any, Dict, Optional, Sequence, Type, Union
 from dotenv import load_dotenv, find_dotenv
 from langchain_openai import ChatOpenAI
-from langchain_core.tools import tool
+from langchain_core.pydantic_v1 import BaseModel, Field
+from langchain_core.tools import tool, BaseTool
 from langchain_core.messages import BaseMessage, HumanMessage
 from langchain.prompts import ChatPromptTemplate
 from langgraph.graph import START, END, StateGraph, add_messages
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import ToolNode
 from langchain_community.utilities import SQLDatabase
-from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
-from langchain_core.runnables.graph import CurveStyle, MermaidDrawMethod, NodeStyles
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit, InfoSQLDatabaseTool, ListSQLDatabaseTool, QuerySQLCheckerTool
 from langsmith import Client
-from PIL import Image as PILImage
-import io
 import json
+from sqlalchemy.engine import Result
+
+# from utils import generate_mermaid
 
 
 ##########################
@@ -41,7 +42,7 @@ database = config["database"]
 schema = config["schema"]
 
 snowflake_url = f"snowflake://{username}:{password}@{snowflake_account}/{database}/{schema}?warehouse={warehouse}&role={role}"
-
+from langchain_community.utilities import SQLDatabase
 db = SQLDatabase.from_uri(snowflake_url, 
                           sample_rows_in_table_info=1, 
                           include_tables=['vw_retail_transactions'], 
@@ -53,7 +54,6 @@ db = SQLDatabase.from_uri(snowflake_url,
 # print(db.get_usable_table_names())
 # # db.run("SELECT * FROM vw_retail_transactions LIMIT 10;")
 
-
 ##########################
 ### tools
 ##########################
@@ -61,6 +61,33 @@ db = SQLDatabase.from_uri(snowflake_url,
 toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 tools = toolkit.get_tools()
 
+class _FormatOutputToolInput(BaseModel):
+    text: str = Field(description="Interpretation of the user question")
+    sql: str = Field(description="Syntactically correct snowflake query which can be used to answer the user's question")
+
+
+class FormatOutputTool(BaseTool):
+    """Tool to parse output in expected format."""
+
+    name: str = "output_formatter"
+    description: str = """
+    Make sure this tool is used after the tool sql_db_query_checker
+    """
+    args_schema: Type[BaseModel] = _FormatOutputToolInput
+
+    def _run(
+        self,
+        text: str,
+        sql: str
+    ) -> Any:
+        """Output things in expected format."""
+        return json.dumps({'text': text, 'sql': sql})
+
+format_output_tool = FormatOutputTool()
+
+# Exclude the QuerySQLDataBaseTool as we don't want to run the query here
+tools = tools[1: ]
+tools.append(format_output_tool)
 llm_with_tools = ChatOpenAI(model="gpt-4o-mini", temperature=0).bind_tools(tools)
 
 
@@ -69,6 +96,9 @@ llm_with_tools = ChatOpenAI(model="gpt-4o-mini", temperature=0).bind_tools(tools
 ##########################
 class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
+    generated_flag: bool = False
+    generated_sql: str = None
+    generated_explanation: str = None
 
 
 ##########################
@@ -86,21 +116,31 @@ class TextToSqlAgent():
 
             SQL_PREFIX = """
             You are an agent designed to interact with a SQL database.
-            Given an input question, create a syntactically correct {dialect} query to run, then look at the results of the query and return the answer.
+
+            Given an input question, create a syntactically correct {dialect} query to run, then return suggested query along with your interpretation of this question. 
+
+            DO NOT try executing the query, just validate the suggested query statement as is, along with your interpretation.
+
+            Notes:
             Unless the user specifies a specific number of examples they wish to obtain, always limit your query to at most {top_k} results using the LIMIT clause.
             You can order the results by a relevant column to return the most interesting examples in the database.
             Never query for all the columns from a specific table, only ask for a the few relevant columns given the question.
+            DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
+            If the question does not seem related to the database, just return "I don't know" as the answer.
+            When selecting from a table, ALWAYS use format "{database_name}.{schema_name}.table_name" rather than the short "table_name".
+
             You have access to tools for interacting with the database.
             Only use the below tools.
             Only use the information returned by the below tools to construct your final answer.
-            You MUST double check your query before executing it. If you get an error while executing a query, rewrite the query and try again.
 
-            DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
-
-            If the question does not seem related to the database, just return "I don't know" as the answer.
+            Before generating the query, ALWAYS call tool sql_db_list_tables to list out tables available.
+            Before generating the query, ALWAYS call tool sql_db_schema to understand the metadata, schema and sample values.
+            After generating the query, ALWAYS validate it using the tool sql_db_query_checker.
+            After calling tool sql_db_query_checker, ALWAYS call the tool output_formatter.
             """
 
             messages = state["messages"]
+
             prompt = ChatPromptTemplate.from_messages(
                 [
                     ("system", SQL_PREFIX),
@@ -111,16 +151,22 @@ class TextToSqlAgent():
                 prompt
                 | llm_with_tools
             )
-            response = chain.invoke({"chat_history": messages, "dialect" : "snowflake", "top_k": 5})
+            response = chain.invoke({"chat_history": messages, "dialect" : "snowflake", "top_k": 5, "database_name": database, "schema_name": schema})
 
-            # if (response.tool_calls[0].name === 'sql') {
-            #     reutn 
-            # }
-            
-            # # update state with ai message
-            # messages.append(response)
+            # print("=====response=====")
+            # print(response)
 
-            return { "messages": [response],  }
+            if response.tool_calls:
+                tool_call = response.tool_calls[0]
+                if tool_call["name"] == "output_formatter":
+                    return { 
+                        "messages": [response], 
+                        "generated_flag": True, 
+                        "generated_sql": tool_call['args']['sql'], 
+                        "generated_explanation": tool_call['args']['text'] 
+                    }
+
+            return { "messages": [response] }
 
 
         def should_continue_or_end(state: State):
@@ -150,16 +196,51 @@ class TextToSqlAgent():
         # Note that we're (optionally) passing the memory when compiling the graph
         self.app = workflow.compile(checkpointer=checkpointer)
 
+        # generate_mermaid(self.app, 'images/output_image_text_to_sql.png')
+
 
     def predict(self, query: str, thread_id: int) -> str:
         final_state = self.app.invoke(
             {"messages": [HumanMessage(content=query)]},
             config={"configurable": {"thread_id": thread_id}}
         )
+        
+        human_msg = final_state['messages'][0].content
+        ai_msg = final_state['messages'][-1].content
 
-        # for msg in final_state['messages']:
+        user_msg = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": human_msg
+                }
+            ]
+        }
+        
+        copilot_msg = {
+                    "role": "copilot",
+                    "content": []
+                }
+        
+        if 'generated_flag' in final_state:
+            sql = final_state['generated_sql']
+            text = final_state['generated_explanation']
+            copilot_msg["content"].append({"type": "text", "text": text})
+            copilot_msg["content"].append({"type": "sql", "statement": sql})
+        else:
+            copilot_msg["content"].append({"type": "text", "text": ai_msg})
+
+        results = {"messages": []}
+        results["messages"].append(user_msg)
+        results["messages"].append(copilot_msg)
+
+        # print("=====final_state=====")
+        # for msg in final_state["messages"]:
+        #     # msg.pretty_print()
         #     print(msg)
-        #     print('\n')
-        #     print('\n')
+        # print(final_state["sql_suggested_flag"])
+        # print(final_state["sql_suggested"])
+        # print("\n")
 
-        return final_state['messages'][-1].content
+        return results

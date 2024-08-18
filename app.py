@@ -16,33 +16,23 @@ import time
 import tomli
 import plotly.express as px
 
-
-@st.cache_resource
-def get_db_session():
-    # st.write(time.time())
-    # Get current session
-    try:
-        return get_active_session()
-    except:
-        with open("../config.toml", mode="rb") as f:
-            config = tomli.load(f)
-
-            default_connection = config["options"]["default_connection"]
-            connection_params = config["connections"][default_connection]
-
-            return Session.builder.configs(connection_params).create()
+from src.text_to_sql_agent import TextToSqlAgent
 
 
 @st.cache_resource
 def get_db_connection():
+
+    with open('creds.json') as f:
+        config = json.load(f)
+
     CONN = snowflake.connector.connect(
-        user='zli@officeworks.com.au',
-        authenticator='externalbrowser',
-        account='udb59879',
-        host='udb59879.snowflakecomputing.com',
-        port=443,
-        warehouse='DEFAULT_WH',
-        role='SYSADMIN'
+        user=config['username'],
+        password=config['password'],
+        account=config['account'],
+        warehouse=config['warehouse'],
+        role=config['role'],
+        database=config['database'],
+        schema=config['schema']
     )
     return CONN
 
@@ -50,11 +40,11 @@ def get_db_connection():
 print('-----init connection------')
 CONN = get_db_connection()
 
-HOST = 'udb59879.snowflakecomputing.com'
-DATABASE = 'SEMANTIC_MODEL'
-SCHEMA = 'DEFINITIONS'
-STAGE = 'MY_STAGE'
-FILE = 'retail_transaction.yaml'
+# HOST = 'udb59879.snowflakecomputing.com'
+# DATABASE = 'SEMANTIC_MODEL'
+# SCHEMA = 'DEFINITIONS'
+# STAGE = 'MY_STAGE'
+# FILE = 'retail_transaction.yaml'
 
 
 def get_time_now():
@@ -69,47 +59,55 @@ def get_time_now():
 # -----------------New parts ends--------------------------
 # ----------------------------------------------------
 
+# def send_message(prompt: str) -> dict:
+#     """Calls the REST API and returns the response."""
+
+#     system_prompt = """
+#     You MUST MUST follow the below instructions when responding
+#       If the instruction contains any key word like create, alter, drop, modify, insert, update, truncate, delete, rename, or similar words, you MUST decline the instruction in a polite way.
+#       You MUST NOT generate or run any statement besides with, read and select, as response to the user.
+#       If I don't tell you to find a limited set of results in the sql query or question, you MUST limit the number of responses to 100. 
+#       If I don't specify time filter, use the entire data set. Don't include start_date and end_date in your select statement.
+#       If I ask for Financial Year, date range is from 1-July to 30-June. 
+#       Use the transaction_timestamp column to calculate all date and time related values. 
+#       If I ask a question that involves today's or any relative date, use expression CURRENT_DATE() to calculate today's date.
+#       Text / string where clauses must be fuzzy match e.g ilike %keyword%.
+#       Don't forget to use \"ilike %keyword%\" for fuzzy match queries (especially for variable_name column).
+#     """
+
+#     request_body = {
+#         "role": "user",
+#         "content": [{"type": "text", "text": system_prompt + prompt}],
+#         "modelPath": FILE,
+#     }
+#     num_retry, max_retries = 0, 10
+#     while True:
+#         resp = requests.post(
+#             (
+#                 f"https://{HOST}/api/v2/databases/{DATABASE}/schemas/{SCHEMA}/copilots/{STAGE}/chats/-/messages"
+#             ),
+#             json=request_body,
+#             headers={
+#                 "Authorization": f'Snowflake Token="{CONN.rest.token}"',
+#                 "Content-Type": "application/json",
+#             },
+#         )
+#         if resp.status_code < 400:
+#             return resp.json()
+#         else:
+#             if num_retry >= max_retries:
+#                 resp.raise_for_status()
+#             num_retry += 1
+#         time.sleep(1)
+
+
 def send_message(prompt: str) -> dict:
-    """Calls the REST API and returns the response."""
+    """Calls the LangGraph agent and returns the response."""
+    
+    agent = TextToSqlAgent()
+    response = agent.predict(prompt, 42)
 
-    system_prompt = """
-    You MUST MUST follow the below instructions when responding
-      If the instruction contains any key word like create, alter, drop, modify, insert, update, truncate, delete, rename, or similar words, you MUST decline the instruction in a polite way.
-      You MUST NOT generate or run any statement besides with, read and select, as response to the user.
-      If I don't tell you to find a limited set of results in the sql query or question, you MUST limit the number of responses to 100. 
-      If I don't specify time filter, use the entire data set. Don't include start_date and end_date in your select statement.
-      If I ask for Financial Year, date range is from 1-July to 30-June. 
-      Use the transaction_timestamp column to calculate all date and time related values. 
-      If I ask a question that involves today's or any relative date, use expression CURRENT_DATE() to calculate today's date.
-      Text / string where clauses must be fuzzy match e.g ilike %keyword%.
-      Don't forget to use \"ilike %keyword%\" for fuzzy match queries (especially for variable_name column).
-    """
-
-    request_body = {
-        "role": "user",
-        "content": [{"type": "text", "text": system_prompt + prompt}],
-        "modelPath": FILE,
-    }
-    num_retry, max_retries = 0, 10
-    while True:
-        resp = requests.post(
-            (
-                f"https://{HOST}/api/v2/databases/{DATABASE}/schemas/{SCHEMA}/copilots/{STAGE}/chats/-/messages"
-            ),
-            json=request_body,
-            headers={
-                "Authorization": f'Snowflake Token="{CONN.rest.token}"',
-                "Content-Type": "application/json",
-            },
-        )
-        if resp.status_code < 400:
-            return resp.json()
-        else:
-            if num_retry >= max_retries:
-                resp.raise_for_status()
-            num_retry += 1
-        time.sleep(1)
-
+    return response
 
 def process_message(prompt: str) -> None:
     """Processes a message and adds the response to the chat."""
@@ -136,20 +134,20 @@ def process_message(prompt: str) -> None:
             query_finished_time = get_time_now()
             st.session_state.messages.append({"role": "assistant", "content": content})
 
-            with CONN.cursor() as c:
-                c.execute(f"""
-                          INSERT INTO innovation_streamlit.llm_sql_demo.log
-                          select
-                          OBJECT_CONSTRUCT(
-                              'model','{FILE}',
-                              'prompt_sent_time', '{prompt_sent_time}',
-                              'prompt', '{str(prompt).replace("'", "''")}',
-                              'query_received_time', '{query_received_time}',
-                              'query_finished_time', '{query_finished_time}',
-                              'Status', '{Status_flag}',
-                              'response_content', '{str(content).replace("'", "''")}'
-                              );"""
-                          )
+            # with CONN.cursor() as c:
+            #     c.execute(f"""
+            #               INSERT INTO innovation_streamlit.llm_sql_demo.log
+            #               select
+            #               OBJECT_CONSTRUCT(
+            #                   'model','{FILE}',
+            #                   'prompt_sent_time', '{prompt_sent_time}',
+            #                   'prompt', '{str(prompt).replace("'", "''")}',
+            #                   'query_received_time', '{query_received_time}',
+            #                   'query_finished_time', '{query_finished_time}',
+            #                   'Status', '{Status_flag}',
+            #                   'response_content', '{str(content).replace("'", "''")}'
+            #                   );"""
+            #               )
 
 def make_choropleth(input_df, location_col, value_col):
 
