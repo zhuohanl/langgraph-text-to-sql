@@ -3,3 +3,4 @@ creds.json
 .env
 *__pycache__
 .DS_Store
+test.py

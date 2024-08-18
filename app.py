@@ -192,10 +192,10 @@ def display_content(content: list, message_index: int = None) -> None:
                 with st.spinner("Running SQL..."):
                     sql_statement = item["statement"]
 
-                    if st.session_state.extend_rows_per_resultset:
-                        CONN.cursor().execute("alter session set ROWS_PER_RESULTSET = 100;")
-                    else:
-                        CONN.cursor().execute("alter session unset ROWS_PER_RESULTSET;")
+                    # if st.session_state.extend_rows_per_resultset:
+                    #     CONN.cursor().execute("alter session set ROWS_PER_RESULTSET = 100;")
+                    # else:
+                    #     CONN.cursor().execute("alter session unset ROWS_PER_RESULTSET;")
 
                     df = pd.read_sql(sql_statement, CONN)
                     Status_flag = 'Successful'
