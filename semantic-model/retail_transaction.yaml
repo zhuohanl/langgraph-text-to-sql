@@ -1,0 +1,259 @@
+name: retail_transaction
+tables:
+  - name: VW_RETAIL_TRANSACTIONS
+    description: Contains a Retail Transaction Dataset from kaggle. Contains data
+      from 2023-04-30 to 2024-04-30.
+    base_table:
+      database: KAGGLE
+      schema: DATASET
+      table: VW_RETAIL_TRANSACTIONS
+    filters:
+      - name: current_financial_year
+        synonyms:
+          - current FY
+          - current financial year
+        description: If current_date is more than June 30, then current financial
+          year is from this year July 1 to next year June 30; If current_date is less
+          than June 30, then current financial year is from last year July 1 to this
+          year June 30
+        expr: transaction_timestamp between TO_DATE(YEAR(CURRENT_DATE) - 1 || '-07-01')
+          and TO_DATE(YEAR(CURRENT_DATE) || '-06-30')
+    dimensions:
+      - name: PRODUCT_ID
+        synonyms:
+          - product id
+        description: Unique identifier for each product.
+        expr: PRODUCT_ID
+        data_type: TEXT
+        sample_values:
+          - C
+          - A
+          - D
+          - B
+      - name: PAYMENT_METHOD
+        synonyms:
+          - PAYMENT METHODS
+        description: Method of payment used for the retail transaction.
+        expr: PAYMENT_METHOD
+        data_type: TEXT
+        sample_values:
+          - Cash
+          - PayPal
+          - Debit Card
+          - Credit Card
+      - name: STORE_LOCATION
+        synonyms:
+          - STORE
+          - LOCATION
+        description: The location where the transaction took place.
+        expr: STORE_LOCATION
+        data_type: TEXT
+        sample_values:
+          - "176 Andrew Cliffs\nBaileyfort, HI 93354"
+          - "11635 William Well Suite 809\nEast Kara, MT 19483"
+          - "910 Mendez Ville Suite 909\nPort Lauraland, MO 99563"
+          - "87522 Sharon Corners Suite 500\nLake Tammy, MO 76234"
+          - "0070 Michelle Island Suite 143\nHoland, VA 80142"
+          - "8492 Jonathan Drive\nNorth Robertshire, TN 67532"
+          - "USNV Harrell\nFPO AA 62814"
+          - "528 Justin Expressway Apt. 336\nCabreraborough, SD 17915"
+          - "189 Wright Mews\nMartinfurt, MO 75932"
+          - "PSC 1498, Box 4142\nAPO AP 10928"
+          - "623 William Track Apt. 920\nPort Dave, NE 02045"
+          - "5370 Nichols Fork Suite 983\nGeorgeshire, MT 20848"
+          - "1573 Petty Parkway Apt. 835\nJordanmouth, IN 05999"
+          - "73061 Larry Pass Apt. 190\nFischerstad, PW 81056"
+          - "103 Noah Court Apt. 298\nSouth Caseymouth, FM 01144"
+          - "44623 Elizabeth Throughway Apt. 440\nAmberview, VA 51707"
+          - "12858 Kidd Roads\nCantuberg, AR 21025"
+          - "90868 Garcia Bypass Apt. 888\nNew Joshua, WY 53394"
+          - "78412 Hernandez Lock Suite 138\nSouth Lauren, PA 69595"
+          - "5446 Brooke Row Apt. 988\nWest Mary, OH 86664"
+          - "Unit 7268 Box 3644\nDPO AP 43969"
+          - "257 Martin Falls\nWhitakerborough, SC 38376"
+          - "388 Matthew Lane Apt. 592\nWest Andreachester, IN 96537"
+          - "1250 Gary Way Apt. 756\nSouth Thomasport, ND 39813"
+          - "9990 Frank Views\nDavisstad, MS 73745"
+      - name: STATE
+        synonyms:
+          - ST
+        description: State/Region Code of United States
+        expr: STATE
+        data_type: TEXT
+        sample_values:
+          - HI
+          - MT
+          - MO
+          - VA
+          - TN
+          - AA
+          - WV
+          - IN
+          - AP
+          - NE
+          - ND
+          - PW
+          - FM
+          - MS
+          - WY
+          - PA
+          - NJ
+          - SC
+          - KS
+          - WA
+          - AE
+          - MP
+          - NH
+          - MN
+          - IL
+      - name: POSTCODE
+        synonyms:
+          - ZIPCODE
+          - ZIP
+        description: Postal Code of the Retail Transaction Location
+        expr: POSTCODE
+        data_type: TEXT
+        sample_values:
+          - '93354'
+          - '19483'
+          - '76234'
+          - '80142'
+          - '67532'
+          - '62814'
+          - '72610'
+          - '17915'
+          - '10928'
+          - '02045'
+          - '45678'
+          - '39813'
+          - '81056'
+          - '51707'
+          - '73745'
+          - '53394'
+          - '69595'
+          - '86664'
+          - '43969'
+          - '49112'
+          - '02752'
+          - '05999'
+          - '21025'
+          - '18166'
+          - '20893'
+      - name: PRODUCT_CATEGORY
+        synonyms:
+          - CATEGORY
+        description: Category to which the product belongs.
+        expr: PRODUCT_CATEGORY
+        data_type: TEXT
+        sample_values:
+          - Books
+          - Home Decor
+          - Electronics
+          - Clothing
+    time_dimensions:
+      - name: TRANSACTION_TIMESTAMP
+        synonyms:
+          - TRANSACTION_TIME
+          - TRANSACTION_DATE
+          - TRANSACTION_DATETIME
+        description: Timestamp of each retail transaction
+        expr: TRANSACTION_TIMESTAMP
+        data_type: TIMESTAMP_NTZ
+        sample_values:
+          - '2023-12-26 12:32:00'
+          - '2023-08-05 00:00:00'
+          - '2024-03-11 18:51:00'
+          - '2023-10-27 22:00:00'
+          - '2023-12-22 11:38:00'
+          - '2023-08-15 04:24:00'
+          - '2023-12-26 05:32:00'
+          - '2023-10-11 06:48:00'
+          - '2024-02-27 11:13:00'
+          - '2023-11-05 01:46:00'
+    measures:
+      - name: CUSTOMER_ID
+        synonyms:
+          - CUSTOMER_IDENTIFIER
+        description: Unique identifier for each customer in the retail transactions
+        expr: CUSTOMER_ID
+        data_type: NUMBER
+        sample_values:
+          - '109318'
+          - '993229'
+          - '579675'
+          - '799826'
+          - '121413'
+          - '463050'
+          - '888163'
+          - '843385'
+          - '839609'
+          - '184135'
+      - name: QUANTITY
+        synonyms:
+          - NUMBER_OF_ITEMS
+          - QUANT
+        description: Number of items sold in each retail transaction
+        expr: QUANTITY
+        data_type: NUMBER
+        sample_values:
+          - '7'
+          - '4'
+          - '8'
+          - '5'
+          - '3'
+          - '6'
+          - '2'
+          - '1'
+          - '9'
+      - name: PRICE
+        synonyms:
+          - PRICING
+        description: The price of each retail transaction
+        expr: PRICE
+        data_type: NUMBER
+        sample_values:
+          - '80.07984415'
+          - '75.19522942'
+          - '31.52881648'
+          - '98.88021828'
+          - '93.18851246'
+          - '13.12193739'
+          - '56.02516419'
+          - '23.85798105'
+          - '43.69259776'
+          - '98.70968076'
+      - name: DISCOUNT_APPLIED_IN_PERCENTAGE
+        synonyms:
+          - DISCOUNT
+          - DISCOUNT_PERCENTAGE
+        description: Percentage of the discount applied to the product
+        expr: DISCOUNT_APPLIED_IN_PERCENTAGE
+        data_type: NUMBER
+        sample_values:
+          - '18.677099500'
+          - '14.121365020'
+          - '15.943700660'
+          - '6.686336780'
+          - '4.030095691'
+          - '16.295126710'
+          - '6.344305684'
+          - '18.703997250'
+          - '7.640606649'
+          - '14.174953220'
+      - name: TOTAL_AMOUNT
+        synonyms:
+          - AMOUNT
+        description: Total amount of each retail transaction
+        expr: TOTAL_AMOUNT
+        data_type: NUMBER
+        sample_values:
+          - '455.862763800'
+          - '258.306546400'
+          - '212.015650900'
+          - '461.343769400'
+          - '626.030483700'
+          - '144.609223300'
+          - '76.885907450'
+          - '419.766052100'
+          - '96.977924650'
+          - '234.012017500'

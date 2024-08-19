@@ -15,6 +15,7 @@ import streamlit as st
 import time
 import tomli
 import plotly.express as px
+from typing import Any, Dict, List, Optional
 
 from src.text_to_sql_agent import TextToSqlAgent
 
@@ -40,11 +41,11 @@ def get_db_connection():
 print('-----init connection------')
 CONN = get_db_connection()
 
-# HOST = 'udb59879.snowflakecomputing.com'
-# DATABASE = 'SEMANTIC_MODEL'
-# SCHEMA = 'DEFINITIONS'
-# STAGE = 'MY_STAGE'
-# FILE = 'retail_transaction.yaml'
+HOST = 'bxb58347.snowflakecomputing.com'
+DATABASE = 'SEMANTIC_MODEL'
+SCHEMA = 'DEFINITIONS'
+STAGE = 'MY_STAGE'
+FILE = 'retail_transaction.yaml'
 
 
 def get_time_now():
@@ -59,55 +60,54 @@ def get_time_now():
 # -----------------New parts ends--------------------------
 # ----------------------------------------------------
 
-# def send_message(prompt: str) -> dict:
-#     """Calls the REST API and returns the response."""
-
-#     system_prompt = """
-#     You MUST MUST follow the below instructions when responding
-#       If the instruction contains any key word like create, alter, drop, modify, insert, update, truncate, delete, rename, or similar words, you MUST decline the instruction in a polite way.
-#       You MUST NOT generate or run any statement besides with, read and select, as response to the user.
-#       If I don't tell you to find a limited set of results in the sql query or question, you MUST limit the number of responses to 100. 
-#       If I don't specify time filter, use the entire data set. Don't include start_date and end_date in your select statement.
-#       If I ask for Financial Year, date range is from 1-July to 30-June. 
-#       Use the transaction_timestamp column to calculate all date and time related values. 
-#       If I ask a question that involves today's or any relative date, use expression CURRENT_DATE() to calculate today's date.
-#       Text / string where clauses must be fuzzy match e.g ilike %keyword%.
-#       Don't forget to use \"ilike %keyword%\" for fuzzy match queries (especially for variable_name column).
-#     """
-
-#     request_body = {
-#         "role": "user",
-#         "content": [{"type": "text", "text": system_prompt + prompt}],
-#         "modelPath": FILE,
-#     }
-#     num_retry, max_retries = 0, 10
-#     while True:
-#         resp = requests.post(
-#             (
-#                 f"https://{HOST}/api/v2/databases/{DATABASE}/schemas/{SCHEMA}/copilots/{STAGE}/chats/-/messages"
-#             ),
-#             json=request_body,
-#             headers={
-#                 "Authorization": f'Snowflake Token="{CONN.rest.token}"',
-#                 "Content-Type": "application/json",
-#             },
-#         )
-#         if resp.status_code < 400:
-#             return resp.json()
-#         else:
-#             if num_retry >= max_retries:
-#                 resp.raise_for_status()
-#             num_retry += 1
-#         time.sleep(1)
-
-
 def send_message(prompt: str) -> dict:
-    """Calls the LangGraph agent and returns the response."""
-    
-    agent = TextToSqlAgent()
-    response = agent.predict(prompt, 42)
+    """Calls the REST API and returns the response."""
 
-    return response
+    system_prompt = """
+    You MUST MUST follow the below instructions when responding
+      If the instruction contains any key word like create, alter, drop, modify, insert, update, truncate, delete, rename, or similar words, you MUST decline the instruction in a polite way.
+      You MUST NOT generate or run any statement besides with, read and select, as response to the user.
+      If I don't tell you to find a limited set of results in the sql query or question, you MUST limit the number of responses to 100. 
+      Only include relevant columns which are required to answer user question. Limit the columns returned to only necessary.
+      If I don't specify time filter, use the entire data set. Don't include start_date and end_date in your select statement.
+      If I ask for Financial Year, date range is from 1-July to 30-June. 
+      Use the transaction_timestamp column to calculate all date and time related values. 
+      If I ask a question that involves today's or any relative date, use expression CURRENT_DATE() to calculate today's date.
+      Text / string where clauses must be fuzzy match e.g ilike %keyword%.
+      Don't forget to use \"ilike %keyword%\" for fuzzy match queries (especially for variable_name column).
+    """
+
+    request_body = {
+        "messages": [
+            {"role": "user", "content": [{"type": "text", "text": f'{system_prompt} {prompt}'}]}
+        ],
+        "semantic_model_file": f"@{DATABASE}.{SCHEMA}.{STAGE}/{FILE}",
+    }
+    resp = requests.post(
+        url=f"https://{HOST}/api/v2/cortex/analyst/message",
+        json=request_body,
+        headers={
+            "Authorization": f'Snowflake Token="{CONN.rest.token}"',
+            "Content-Type": "application/json",
+        },
+    )
+    request_id = resp.headers.get("X-Snowflake-Request-Id")
+    if resp.status_code < 400:
+        return {**resp.json(), "request_id": request_id}  # type: ignore[arg-type]
+    else:
+        raise Exception(
+            f"Failed request (id: {request_id}) with status {resp.status_code}: {resp.text}"
+        )
+
+
+# def send_message(prompt: str) -> dict:
+#     """Calls the LangGraph agent and returns the response."""
+    
+#     agent = TextToSqlAgent()
+#     response = agent.predict(prompt, 42)
+
+#     return response
+
 
 def process_message(prompt: str) -> None:
     """Processes a message and adds the response to the chat."""
@@ -127,12 +127,15 @@ def process_message(prompt: str) -> None:
         with st.spinner("🤖 Sending request for processing. Waiting for response..."):
             prompt_sent_time = get_time_now()
             response = send_message(prompt=prompt)
+            request_id = response["request_id"]
         with st.spinner("🤖 Response received.. . Preparing the results..."):
             query_received_time = get_time_now()
-            content = response["messages"][-1]["content"]
-            Status_flag = display_content(content=content)
+            content = response["message"]["content"]
+            Status_flag = display_content(content=content, request_id=request_id)  # type: ignore[arg-type]
             query_finished_time = get_time_now()
-            st.session_state.messages.append({"role": "assistant", "content": content})
+            st.session_state.messages.append(
+                {"role": "assistant", "content": content, "request_id": request_id}
+            )
 
             # with CONN.cursor() as c:
             #     c.execute(f"""
@@ -162,24 +165,22 @@ def make_choropleth(input_df, location_col, value_col):
 
     return fig
 
-def display_content(content: list, message_index: int = None) -> None:
+def display_content(
+    content: List[Dict[str, str]],
+    request_id: Optional[str] = None,
+    message_index: Optional[int] = None,
+) -> None:
     """Displays a content item for a message."""
     message_index = message_index or len(st.session_state.messages)
+
+    if request_id:
+        with st.expander("Request ID", expanded=False):
+            st.markdown(request_id)
+
     for item in content:
         Status_flag = 'Failed'
         if item["type"] == "text":
-            if "<SUGGESTION>" in item["text"]:
-                suggestion_response = json.loads(item["text"][12:])[0]
-                st.markdown(suggestion_response["explanation"])
-                with st.expander("Suggestions", expanded=True):
-                    for suggestion_index, suggestion in enumerate(
-                            suggestion_response["suggestions"]
-
-                    ):
-                        if st.button(suggestion, key=f"{message_index}_{suggestion_index}"):
-                            st.session_state.active_suggestion = suggestion
-            else:
-                st.markdown(item["text"])
+            st.markdown(item["text"])
         elif item["type"] == "suggestions":
             with st.expander("Suggestions", expanded=True):
                 for suggestion_index, suggestion in enumerate(item["suggestions"]):
@@ -191,11 +192,6 @@ def display_content(content: list, message_index: int = None) -> None:
             with st.expander("Results", expanded=True):
                 with st.spinner("Running SQL..."):
                     sql_statement = item["statement"]
-
-                    # if st.session_state.extend_rows_per_resultset:
-                    #     CONN.cursor().execute("alter session set ROWS_PER_RESULTSET = 100;")
-                    # else:
-                    #     CONN.cursor().execute("alter session unset ROWS_PER_RESULTSET;")
 
                     df = pd.read_sql(sql_statement, CONN)
                     Status_flag = 'Successful'
@@ -222,13 +218,10 @@ def display_content(content: list, message_index: int = None) -> None:
 
 
 def config_options():
-    st.sidebar.checkbox('Do you want to extend ROWS_PER_RESULTSET to 100?', key="extend_rows_per_resultset", value = False)
+    st.sidebar.button("Start Over", key="clear_conversation")
 
 
 def main():
-    # '--------------------------------------------------,
-    # '--------------------------------------------------,
-    # '--------------------------------------------------,
     st.title(":speech_balloon: LLM Insights & Analytics Assistant")
     st.markdown("## Create your custom insights using natural language")
     # st.markdown(f"**expa**")
@@ -254,7 +247,7 @@ def main():
     config_options()
 
 
-    if "messages" not in st.session_state:
+    if st.session_state.clear_conversation or "messages" not in st.session_state:
         st.session_state.messages = []
         st.session_state.suggestions = []
         st.session_state.active_suggestion = None
