@@ -1,4 +1,5 @@
 
+import os
 from typing import Annotated, TypedDict, Any, Dict, Optional, Sequence, Type, Union
 from dotenv import load_dotenv, find_dotenv
 from langchain_openai import ChatOpenAI
@@ -30,16 +31,13 @@ metadata = "Snowflake, gpt-4o base-case-agent"
 ### Set up db
 ##########################
 
-with open("creds.json") as f:
-    config = json.load(f)
-
-username = config["username"]
-password = config["password"]
-snowflake_account = config["account"]
-warehouse = config["warehouse"]
-role = config["role"]
-database = config["database"]
-schema = config["schema"]
+username = os.environ['DATABASE_USERNAME']
+password = os.environ['DATABASE_PASSWORD']
+snowflake_account = os.environ['DATABASE_ACCOUNT']
+warehouse = os.environ['DATABASE_WAREHOUSE']
+role = os.environ['DATABASE_ROLE']
+database = os.environ['DATABASE_NAME']
+schema = os.environ['DATABASE_SCHEMA']
 
 snowflake_url = f"snowflake://{username}:{password}@{snowflake_account}/{database}/{schema}?warehouse={warehouse}&role={role}"
 from langchain_community.utilities import SQLDatabase

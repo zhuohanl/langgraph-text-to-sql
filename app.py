@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.session import Session
@@ -17,7 +18,6 @@ import tomli
 import plotly.express as px
 from typing import Any, Dict, List, Optional
 import uuid
-import os
 
 from src.text_to_sql_agent import TextToSqlAgent
 
