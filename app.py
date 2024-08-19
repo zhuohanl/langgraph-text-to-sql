@@ -14,7 +14,7 @@ import snowflake.connector
 import streamlit as st
 import time
 import tomli
-# import plotly.express as px
+import plotly.express as px
 from typing import Any, Dict, List, Optional
 import uuid
 
@@ -154,17 +154,16 @@ def process_message(prompt: str) -> None:
 
 def make_choropleth(input_df, location_col, value_col):
 
-    # fig = px.choropleth(input_df, locations=location_col, color=value_col,
-    #                     locationmode="USA-states",
-    #                     color_continuous_scale="Viridis",
-    #                     range_color=(0, max(input_df[value_col])),
-    #                     scope="usa",
-    #                     labels={value_col: value_col}
-    #                     )
-    # fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
+    fig = px.choropleth(input_df, locations=location_col, color=value_col,
+                        locationmode="USA-states",
+                        color_continuous_scale="Viridis",
+                        range_color=(0, max(input_df[value_col])),
+                        scope="usa",
+                        labels={value_col: value_col}
+                        )
+    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
 
-    # return fig
-    return 123
+    return fig
 
 def display_content(
     content: List[Dict[str, str]],
