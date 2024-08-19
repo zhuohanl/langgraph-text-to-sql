@@ -445,6 +445,17 @@ files = [
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
+name = "cloudpickle"
+version = "2.2.1"
+description = "Extended pickling support for Python objects"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "cloudpickle-2.2.1-py3-none-any.whl", hash = "sha256:61f594d1f4c295fa5cd9014ceb3a1fc4a70b0de1164b94fbc2d854ccba056f9f"},
+    {file = "cloudpickle-2.2.1.tar.gz", hash = "sha256:d89684b8de9e34a2a43b3460fbca07d09d6e25ce858df4d5a44240403b6178f5"},
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -2298,6 +2309,22 @@ files = [
 ]
 
 [[package]]
+name = "setuptools"
+version = "72.2.0"
+description = "Easily download, build, install, upgrade, and uninstall Python packages"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "setuptools-72.2.0-py3-none-any.whl", hash = "sha256:f11dd94b7bae3a156a95ec151f24e4637fb4fa19c878e4d191bfb8b2d82728c4"},
+    {file = "setuptools-72.2.0.tar.gz", hash = "sha256:80aacbf633704e9c8bfa1d99fa5dd4dc59573efcf9e4042c13d3bcef91ac2ef9"},
+]
+
+[package.extras]
+core = ["importlib-metadata (>=6)", "importlib-resources (>=5.10.2)", "jaraco.text (>=3.7)", "more-itertools (>=8.8)", "ordered-set (>=3.1.1)", "packaging (>=24)", "platformdirs (>=2.6.2)", "tomli (>=2.0.1)", "wheel (>=0.43.0)"]
+doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier", "towncrier (<24.7)"]
+test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "importlib-metadata", "ini2toml[lite] (>=0.14)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "jaraco.test", "mypy (==1.11.*)", "packaging (>=23.2)", "pip (>=19.1)", "pyproject-hooks (!=1.1)", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-home (>=0.5)", "pytest-mypy", "pytest-perf", "pytest-ruff (<0.4)", "pytest-ruff (>=0.2.1)", "pytest-ruff (>=0.3.2)", "pytest-subprocess", "pytest-timeout", "pytest-xdist (>=3)", "tomli", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -2387,6 +2414,34 @@ typing-extensions = ">=4.3,<5"
 development = ["Cython", "coverage", "more-itertools", "numpy (<1.27.0)", "pendulum (!=2.1.1)", "pexpect", "pytest (<7.5.0)", "pytest-cov", "pytest-rerunfailures", "pytest-timeout", "pytest-xdist", "pytzdata"]
 pandas = ["pandas (>=1.0.0,<3.0.0)", "pyarrow"]
 secure-local-storage = ["keyring (>=23.1.0,<26.0.0)"]
+
+[[package]]
+name = "snowflake-snowpark-python"
+version = "1.20.0"
+description = "Snowflake Snowpark for Python"
+optional = false
+python-versions = "<3.12,>=3.8"
+files = [
+    {file = "snowflake_snowpark_python-1.20.0-py3-none-any.whl", hash = "sha256:d650710a808b5639180441bfa422817c0d54235cc0694866572218de4c512069"},
+    {file = "snowflake_snowpark_python-1.20.0.tar.gz", hash = "sha256:514dafc962121359a7d9c3cc7b49f19dae6af0a53fa2ad8a6a7da02b7ed33fc9"},
+]
+
+[package.dependencies]
+cloudpickle = {version = ">=1.6.0,<2.1.0 || >2.1.0,<2.2.0 || >2.2.0,<=2.2.1", markers = "python_version < \"3.11\""}
+pyyaml = "*"
+setuptools = ">=40.6.0"
+snowflake-connector-python = ">=3.10.0,<4.0.0"
+typing-extensions = ">=4.1.0,<5.0.0"
+wheel = "*"
+
+[package.extras]
+development = ["cachetools", "coverage", "matplotlib", "openpyxl", "pre-commit", "pytest (<8.0.0)", "pytest-cov", "pytest-timeout", "pytest-xdist", "sphinx (==5.0.2)"]
+localtest = ["pandas", "requests"]
+modin = ["modin (==0.28.1)", "snowflake-connector-python[pandas] (>=3.10.0,<4.0.0)"]
+modin-development = ["cachetools", "coverage", "decorator", "matplotlib", "modin (==0.28.1)", "openpyxl", "pre-commit", "pytest (<8.0.0)", "pytest-assume", "pytest-cov", "pytest-timeout", "pytest-xdist", "scipy", "snowflake-connector-python[pandas] (>=3.10.0,<4.0.0)", "sphinx (==5.0.2)", "statsmodels"]
+opentelemetry = ["opentelemetry-api (>=1.0.0,<2.0.0)", "opentelemetry-sdk (>=1.0.0,<2.0.0)"]
+pandas = ["snowflake-connector-python[pandas] (>=3.10.0,<4.0.0)"]
+secure-local-storage = ["snowflake-connector-python[secure-local-storage] (>=3.10.0,<4.0.0)"]
 
 [[package]]
 name = "snowflake-sqlalchemy"
@@ -2771,6 +2826,20 @@ files = [
 watchmedo = ["PyYAML (>=3.10)"]
 
 [[package]]
+name = "wheel"
+version = "0.44.0"
+description = "A built-package format for Python"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "wheel-0.44.0-py3-none-any.whl", hash = "sha256:2376a90c98cc337d18623527a97c31797bd02bad0033d41547043a1cbfbe448f"},
+    {file = "wheel-0.44.0.tar.gz", hash = "sha256:a29c3f2817e95ab89aa4660681ad547c0e9547f20e75b0562fe7723c9a2a9d49"},
+]
+
+[package.extras]
+test = ["pytest (>=6.0.0)", "setuptools (>=65)"]
+
+[[package]]
 name = "yarl"
 version = "1.9.4"
 description = "Yet another URL library"
@@ -2876,4 +2945,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "3.10.7"
-content-hash = "f2be9104d391d30c5a4d260790774875642cebbfbe51331b883365250f5e39d1"
+content-hash = "0f8a6b6523d5090b66d0ad44e007cc91ad0350fa166144b00ed977115c605e19"
