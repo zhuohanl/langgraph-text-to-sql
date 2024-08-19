@@ -55,7 +55,9 @@ def get_time_now():
 # -----------------New parts ends--------------------------
 # ----------------------------------------------------
 
-# HOST = 'bxb58347.snowflakecomputing.com'
+# with open('creds.json') as f:
+#     config = json.load(f)
+# HOST = config['host']
 # DATABASE = 'SEMANTIC_MODEL'
 # SCHEMA = 'DEFINITIONS'
 # STAGE = 'MY_STAGE'
