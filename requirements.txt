@@ -1,0 +1,8 @@
+langchain-community^0.2.11
+langchain-openai^0.1.21
+langchain^0.2.12
+langgraph^0.2.3
+langsmith^0.1.98
+pillow^10.4.0
+snowflake-sqlalchemy^1.6.1
+sqlalchemy^2.0.32
