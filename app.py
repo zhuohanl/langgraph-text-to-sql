@@ -16,6 +16,7 @@ import time
 import tomli
 import plotly.express as px
 from typing import Any, Dict, List, Optional
+import uuid
 
 from src.text_to_sql_agent import TextToSqlAgent
 
@@ -41,12 +42,6 @@ def get_db_connection():
 print('-----init connection------')
 CONN = get_db_connection()
 
-HOST = 'bxb58347.snowflakecomputing.com'
-DATABASE = 'SEMANTIC_MODEL'
-SCHEMA = 'DEFINITIONS'
-STAGE = 'MY_STAGE'
-FILE = 'retail_transaction.yaml'
-
 
 def get_time_now():
     # Define the desired time zone (Australia/Melbourne)
@@ -60,53 +55,60 @@ def get_time_now():
 # -----------------New parts ends--------------------------
 # ----------------------------------------------------
 
-def send_message(prompt: str) -> dict:
-    """Calls the REST API and returns the response."""
-
-    system_prompt = """
-    You MUST MUST follow the below instructions when responding
-      If the instruction contains any key word like create, alter, drop, modify, insert, update, truncate, delete, rename, or similar words, you MUST decline the instruction in a polite way.
-      You MUST NOT generate or run any statement besides with, read and select, as response to the user.
-      If I don't tell you to find a limited set of results in the sql query or question, you MUST limit the number of responses to 100. 
-      Only include relevant columns which are required to answer user question. Limit the columns returned to only necessary.
-      If I don't specify time filter, use the entire data set. Don't include start_date and end_date in your select statement.
-      If I ask for Financial Year, date range is from 1-July to 30-June. 
-      Use the transaction_timestamp column to calculate all date and time related values. 
-      If I ask a question that involves today's or any relative date, use expression CURRENT_DATE() to calculate today's date.
-      Text / string where clauses must be fuzzy match e.g ilike %keyword%.
-      Don't forget to use \"ilike %keyword%\" for fuzzy match queries (especially for variable_name column).
-    """
-
-    request_body = {
-        "messages": [
-            {"role": "user", "content": [{"type": "text", "text": f'{system_prompt} {prompt}'}]}
-        ],
-        "semantic_model_file": f"@{DATABASE}.{SCHEMA}.{STAGE}/{FILE}",
-    }
-    resp = requests.post(
-        url=f"https://{HOST}/api/v2/cortex/analyst/message",
-        json=request_body,
-        headers={
-            "Authorization": f'Snowflake Token="{CONN.rest.token}"',
-            "Content-Type": "application/json",
-        },
-    )
-    request_id = resp.headers.get("X-Snowflake-Request-Id")
-    if resp.status_code < 400:
-        return {**resp.json(), "request_id": request_id}  # type: ignore[arg-type]
-    else:
-        raise Exception(
-            f"Failed request (id: {request_id}) with status {resp.status_code}: {resp.text}"
-        )
-
+# HOST = 'bxb58347.snowflakecomputing.com'
+# DATABASE = 'SEMANTIC_MODEL'
+# SCHEMA = 'DEFINITIONS'
+# STAGE = 'MY_STAGE'
+# FILE = 'retail_transaction.yaml'
 
 # def send_message(prompt: str) -> dict:
-#     """Calls the LangGraph agent and returns the response."""
-    
-#     agent = TextToSqlAgent()
-#     response = agent.predict(prompt, 42)
+#     """Calls the REST API and returns the response."""
 
-#     return response
+#     system_prompt = """
+#     You MUST MUST follow the below instructions when responding
+#       If the instruction contains any key word like create, alter, drop, modify, insert, update, truncate, delete, rename, or similar words, you MUST decline the instruction in a polite way.
+#       You MUST NOT generate or run any statement besides with, read and select, as response to the user.
+#       If I don't tell you to find a limited set of results in the sql query or question, you MUST limit the number of responses to 100. 
+#       Only include relevant columns which are required to answer user question. Limit the columns returned to only necessary.
+#       If I don't specify time filter, use the entire data set. Don't include start_date and end_date in your select statement.
+#       If I ask for Financial Year, date range is from 1-July to 30-June. 
+#       Use the transaction_timestamp column to calculate all date and time related values. 
+#       If I ask a question that involves today's or any relative date, use expression CURRENT_DATE() to calculate today's date.
+#       Text / string where clauses must be fuzzy match e.g ilike %keyword%.
+#       Don't forget to use \"ilike %keyword%\" for fuzzy match queries (especially for variable_name column).
+#     """
+
+#     request_body = {
+#         "messages": [
+#             {"role": "user", "content": [{"type": "text", "text": f'{system_prompt} {prompt}'}]}
+#         ],
+#         "semantic_model_file": f"@{DATABASE}.{SCHEMA}.{STAGE}/{FILE}",
+#     }
+#     resp = requests.post(
+#         url=f"https://{HOST}/api/v2/cortex/analyst/message",
+#         json=request_body,
+#         headers={
+#             "Authorization": f'Snowflake Token="{CONN.rest.token}"',
+#             "Content-Type": "application/json",
+#         },
+#     )
+#     request_id = resp.headers.get("X-Snowflake-Request-Id")
+#     if resp.status_code < 400:
+#         return {**resp.json(), "request_id": request_id}  # type: ignore[arg-type]
+#     else:
+#         raise Exception(
+#             f"Failed request (id: {request_id}) with status {resp.status_code}: {resp.text}"
+#         )
+
+
+def send_message(prompt: str) -> dict:
+    """Calls the LangGraph agent and returns the response."""
+    
+    agent = TextToSqlAgent()
+    request_id = uuid.uuid4()
+    response = agent.predict(prompt, request_id)
+
+    return {**response, "request_id": request_id}
 
 
 def process_message(prompt: str) -> None:
@@ -115,11 +117,7 @@ def process_message(prompt: str) -> None:
         {"role": "user", "content": [{"type": "text", "text": prompt}]}
     )
 
-    # Make connection every time.. this is a temp fix for sessionn expiry
     print('-------Processing Message-------------')
-    # print('-------get_db_connection-------------')
-    # session = get_db_session()
-    # CONN = get_db_connection()
 
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -194,6 +192,7 @@ def display_content(
                     sql_statement = item["statement"]
 
                     df = pd.read_sql(sql_statement, CONN)
+
                     Status_flag = 'Successful'
                     if len(df.index) > 1:
                         data_tab, line_tab, bar_tab, map_tab = st.tabs(
@@ -207,7 +206,7 @@ def display_content(
                         with bar_tab:
                             st.bar_chart(df)
 
-                        if df.index.name.lower() in ['state', 'states']:
+                        if df.index.name and df.index.name.lower() in ['state', 'states']:
                             with map_tab:
                                 df = df.reset_index()
                                 fig = make_choropleth(input_df=df, location_col=df.columns.values[0], value_col=df.columns.values[1])

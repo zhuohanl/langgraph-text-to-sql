@@ -126,7 +126,7 @@ class TextToSqlAgent():
             You can order the results by a relevant column to return the most interesting examples in the database.
             Never query for all the columns from a specific table, only ask for a the few relevant columns given the question.
             DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
-            If the question does not seem related to the database, just return "I don't know" as the answer.
+            If the question does not seem related to the database, just return "Your input seems not related to the database. Execuse me for not answering." as the answer.
             When selecting from a table, ALWAYS use format "{database_name}.{schema_name}.table_name" rather than the short "table_name".
 
             You have access to tools for interacting with the database.
@@ -205,35 +205,23 @@ class TextToSqlAgent():
             config={"configurable": {"thread_id": thread_id}}
         )
         
-        human_msg = final_state['messages'][0].content
         ai_msg = final_state['messages'][-1].content
-
-        user_msg = {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": human_msg
-                }
-            ]
-        }
         
-        copilot_msg = {
-                    "role": "copilot",
+        analyst_msg = {
+                    "role": "analyst",
                     "content": []
                 }
         
         if 'generated_flag' in final_state:
             sql = final_state['generated_sql']
             text = final_state['generated_explanation']
-            copilot_msg["content"].append({"type": "text", "text": text})
-            copilot_msg["content"].append({"type": "sql", "statement": sql})
+            analyst_msg["content"].append({"type": "text", "text": text})
+            analyst_msg["content"].append({"type": "sql", "statement": sql})
         else:
-            copilot_msg["content"].append({"type": "text", "text": ai_msg})
+            analyst_msg["content"].append({"type": "text", "text": ai_msg})
 
-        results = {"messages": []}
-        results["messages"].append(user_msg)
-        results["messages"].append(copilot_msg)
+        results = {}
+        results["message"] = analyst_msg
 
         # print("=====final_state=====")
         # for msg in final_state["messages"]:
