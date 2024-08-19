@@ -17,6 +17,7 @@ import tomli
 import plotly.express as px
 from typing import Any, Dict, List, Optional
 import uuid
+import os
 
 from src.text_to_sql_agent import TextToSqlAgent
 
@@ -24,17 +25,14 @@ from src.text_to_sql_agent import TextToSqlAgent
 @st.cache_resource
 def get_db_connection():
 
-    with open('creds.json') as f:
-        config = json.load(f)
-
     CONN = snowflake.connector.connect(
-        user=config['username'],
-        password=config['password'],
-        account=config['account'],
-        warehouse=config['warehouse'],
-        role=config['role'],
-        database=config['database'],
-        schema=config['schema']
+        user=os.environ['DATABASE_USERNAME'],
+        password=os.environ['DATABASE_PASSWORD'],
+        account=os.environ['DATABASE_ACCOUNT'],
+        warehouse=os.environ['DATABASE_WAREHOUSE'],
+        role=os.environ['DATABASE_ROLE'],
+        database=os.environ['DATABASE_NAME'],
+        schema=os.environ['DATABASE_SCHEMA']
     )
     return CONN
 
