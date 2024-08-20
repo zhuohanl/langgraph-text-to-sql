@@ -32,7 +32,8 @@ def get_db_connection():
         warehouse=os.environ['DATABASE_WAREHOUSE'],
         role=os.environ['DATABASE_ROLE'],
         database=os.environ['DATABASE_NAME'],
-        schema=os.environ['DATABASE_SCHEMA']
+        schema=os.environ['DATABASE_SCHEMA'],
+        client_session_keep_alive=True
     )
     return CONN
 
