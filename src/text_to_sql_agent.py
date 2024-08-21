@@ -210,7 +210,7 @@ class TextToSqlAgent():
                     "content": []
                 }
         
-        if 'generated_flag' in final_state:
+        if 'generated_flag' in final_state and final_state['generated_flag']:
             sql = final_state['generated_sql']
             text = final_state['generated_explanation']
             analyst_msg["content"].append({"type": "text", "text": text})
