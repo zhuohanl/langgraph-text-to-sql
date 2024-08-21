@@ -130,6 +130,8 @@ def process_message(prompt: str) -> None:
         with st.spinner("🤖 Response received.. . Preparing the results..."):
             query_received_time = get_time_now()
             content = response["message"]["content"]
+            print("=====content=====")
+            print(content)
             Status_flag = display_content(content=content, request_id=request_id)  # type: ignore[arg-type]
             query_finished_time = get_time_now()
             st.session_state.messages.append(
