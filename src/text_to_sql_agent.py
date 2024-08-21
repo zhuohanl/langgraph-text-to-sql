@@ -124,7 +124,6 @@ class TextToSqlAgent():
             You can order the results by a relevant column to return the most interesting examples in the database.
             Never query for all the columns from a specific table, only ask for a the few relevant columns given the question.
             DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
-            If the question does not seem related to the database, just return "Your input seems not related to the database. Execuse me for not answering." as the answer.
             When selecting from a table, ALWAYS use format "{database_name}.{schema_name}.table_name" rather than the short "table_name".
 
             You have access to tools for interacting with the database.
@@ -135,6 +134,8 @@ class TextToSqlAgent():
             Before generating the query, ALWAYS call tool sql_db_schema to understand the metadata, schema and sample values.
             After generating the query, ALWAYS validate it using the tool sql_db_query_checker.
             After calling tool sql_db_query_checker, ALWAYS call the tool output_formatter.
+
+            If the question does not seem related to the database, just return "Your input seems not related to the database. Execuse me for not answering." as the answer. DO NOT call any tool in this case!!!
             """
 
             messages = state["messages"]
@@ -210,7 +211,7 @@ class TextToSqlAgent():
                     "content": []
                 }
         
-        if 'generated_flag' in final_state and final_state['generated_flag']:
+        if 'generated_flag' in final_state and final_state['generated_flag'] and final_state['generated_sql']:
             sql = final_state['generated_sql']
             text = final_state['generated_explanation']
             analyst_msg["content"].append({"type": "text", "text": text})
