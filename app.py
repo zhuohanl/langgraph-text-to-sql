@@ -57,7 +57,7 @@ def get_time_now():
 # with open('creds.json') as f:
 #     config = json.load(f)
 # HOST = config['host']
-HOST = os.environ['DATABASE_ACCOUNT']
+HOST = f"{os.environ['DATABASE_ACCOUNT']}.snowflakecomputing.com"
 DATABASE = 'SEMANTIC_MODEL'
 SCHEMA = 'DEFINITIONS'
 STAGE = 'MY_STAGE'
