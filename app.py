@@ -57,59 +57,60 @@ def get_time_now():
 # with open('creds.json') as f:
 #     config = json.load(f)
 # HOST = config['host']
-# DATABASE = 'SEMANTIC_MODEL'
-# SCHEMA = 'DEFINITIONS'
-# STAGE = 'MY_STAGE'
-# FILE = 'retail_transaction.yaml'
-
-# def send_message(prompt: str) -> dict:
-#     """Calls the REST API and returns the response."""
-
-#     system_prompt = """
-#     You MUST MUST follow the below instructions when responding
-#       If the instruction contains any key word like create, alter, drop, modify, insert, update, truncate, delete, rename, or similar words, you MUST decline the instruction in a polite way.
-#       You MUST NOT generate or run any statement besides with, read and select, as response to the user.
-#       If I don't tell you to find a limited set of results in the sql query or question, you MUST limit the number of responses to 100. 
-#       Only include relevant columns which are required to answer user question. Limit the columns returned to only necessary.
-#       If I don't specify time filter, use the entire data set. Don't include start_date and end_date in your select statement.
-#       If I ask for Financial Year, date range is from 1-July to 30-June. 
-#       Use the transaction_timestamp column to calculate all date and time related values. 
-#       If I ask a question that involves today's or any relative date, use expression CURRENT_DATE() to calculate today's date.
-#       Text / string where clauses must be fuzzy match e.g ilike %keyword%.
-#       Don't forget to use \"ilike %keyword%\" for fuzzy match queries (especially for variable_name column).
-#     """
-
-#     request_body = {
-#         "messages": [
-#             {"role": "user", "content": [{"type": "text", "text": f'{system_prompt} {prompt}'}]}
-#         ],
-#         "semantic_model_file": f"@{DATABASE}.{SCHEMA}.{STAGE}/{FILE}",
-#     }
-#     resp = requests.post(
-#         url=f"https://{HOST}/api/v2/cortex/analyst/message",
-#         json=request_body,
-#         headers={
-#             "Authorization": f'Snowflake Token="{CONN.rest.token}"',
-#             "Content-Type": "application/json",
-#         },
-#     )
-#     request_id = resp.headers.get("X-Snowflake-Request-Id")
-#     if resp.status_code < 400:
-#         return {**resp.json(), "request_id": request_id}  # type: ignore[arg-type]
-#     else:
-#         raise Exception(
-#             f"Failed request (id: {request_id}) with status {resp.status_code}: {resp.text}"
-#         )
-
+HOST = os.environ['DATABASE_ACCOUNT']
+DATABASE = 'SEMANTIC_MODEL'
+SCHEMA = 'DEFINITIONS'
+STAGE = 'MY_STAGE'
+FILE = 'retail_transaction.yaml'
 
 def send_message(prompt: str) -> dict:
-    """Calls the LangGraph agent and returns the response."""
-    
-    agent = TextToSqlAgent()
-    request_id = uuid.uuid4()
-    response = agent.predict(prompt, request_id)
+    """Calls the REST API and returns the response."""
 
-    return {**response, "request_id": request_id}
+    system_prompt = """
+    You MUST MUST follow the below instructions when responding
+      If the instruction contains any key word like create, alter, drop, modify, insert, update, truncate, delete, rename, or similar words, you MUST decline the instruction in a polite way.
+      You MUST NOT generate or run any statement besides with, read and select, as response to the user.
+      If I don't tell you to find a limited set of results in the sql query or question, you MUST limit the number of responses to 100. 
+      Only include relevant columns which are required to answer user question. Limit the columns returned to only necessary.
+      If I don't specify time filter, use the entire data set. Don't include start_date and end_date in your select statement.
+      If I ask for Financial Year, date range is from 1-July to 30-June. 
+      Use the transaction_timestamp column to calculate all date and time related values. 
+      If I ask a question that involves today's or any relative date, use expression CURRENT_DATE() to calculate today's date.
+      Text / string where clauses must be fuzzy match e.g ilike %keyword%.
+      Don't forget to use \"ilike %keyword%\" for fuzzy match queries (especially for variable_name column).
+    """
+
+    request_body = {
+        "messages": [
+            {"role": "user", "content": [{"type": "text", "text": f'{system_prompt} {prompt}'}]}
+        ],
+        "semantic_model_file": f"@{DATABASE}.{SCHEMA}.{STAGE}/{FILE}",
+    }
+    resp = requests.post(
+        url=f"https://{HOST}/api/v2/cortex/analyst/message",
+        json=request_body,
+        headers={
+            "Authorization": f'Snowflake Token="{CONN.rest.token}"',
+            "Content-Type": "application/json",
+        },
+    )
+    request_id = resp.headers.get("X-Snowflake-Request-Id")
+    if resp.status_code < 400:
+        return {**resp.json(), "request_id": request_id}  # type: ignore[arg-type]
+    else:
+        raise Exception(
+            f"Failed request (id: {request_id}) with status {resp.status_code}: {resp.text}"
+        )
+
+
+# def send_message(prompt: str) -> dict:
+#     """Calls the LangGraph agent and returns the response."""
+    
+#     agent = TextToSqlAgent()
+#     request_id = uuid.uuid4()
+#     response = agent.predict(prompt, request_id)
+
+#     return {**response, "request_id": request_id}
 
 
 def process_message(prompt: str) -> None:
